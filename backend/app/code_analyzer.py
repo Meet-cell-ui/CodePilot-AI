@@ -1,19 +1,8 @@
 import os
 
 
-IGNORE_FOLDERS = {
-    "node_modules",
-    "venv",
-    ".git",
-    "__pycache__",
-    ".idea",
-    ".vscode",
-    "dist",
-    "build",
-}
-
-
 def analyze_code(project_path):
+
     result = {
         "languages": {},
         "files_analyzed": 0,
@@ -22,74 +11,79 @@ def analyze_code(project_path):
         "issues": []
     }
 
-    for root, dirs, files in os.walk(project_path):
-
-        # Ignore dependency, build and environment folders
-        dirs[:] = [
-            directory
-            for directory in dirs
-            if directory not in IGNORE_FOLDERS
-        ]
+    for root, folders, files in os.walk(project_path):
 
         for file in files:
 
-            if not file.endswith((
-                ".py",
-                ".java",
-                ".js",
-                ".html",
-                ".css"
-            )):
-                continue
+            if file.endswith((".py", ".java", ".js", ".html", ".css")):
 
-            result["files_analyzed"] += 1
+                result["files_analyzed"] += 1
 
-            extension = file.rsplit(".", 1)[-1].lower()
+                extension = file.split(".")[-1]
 
-            language_map = {
-                "py": "Python",
-                "java": "Java",
-                "js": "JavaScript",
-                "html": "HTML",
-                "css": "CSS",
-            }
+                if extension == "py":
+                    language = "Python"
 
-            language = language_map.get(extension, "Other")
+                elif extension == "java":
+                    language = "Java"
 
-            result["languages"][language] = (
-                result["languages"].get(language, 0) + 1
-            )
+                elif extension == "js":
+                    language = "JavaScript"
 
-            file_path = os.path.join(root, file)
+                elif extension == "html":
+                    language = "HTML"
 
-            try:
-                with open(
-                    file_path,
-                    "r",
-                    encoding="utf-8",
-                    errors="ignore"
-                ) as f:
-                    content = f.read()
+                elif extension == "css":
+                    language = "CSS"
 
-                # Basic function detection
-                result["functions"] += content.count("def ")
-                result["functions"] += content.count("function ")
+                else:
+                    language = "Other"
 
-                # Basic class detection
-                result["classes"] += content.count("class ")
 
-                # Basic hardcoded password detection
-                if "password=" in content.lower():
-                    result["issues"].append({
-                        "file": os.path.relpath(
-                            file_path,
-                            project_path
-                        ),
-                        "issue": "Possible hardcoded password",
-                        "severity": "High"
-                    })
+                result["languages"][language] = (
+                    result["languages"].get(language, 0) + 1
+                )
 
-            except (OSError, UnicodeDecodeError):
-                continue
+
+                file_path = os.path.join(root, file)
+
+                try:
+
+                    with open(
+                        file_path,
+                        "r",
+                        encoding="utf-8",
+                        errors="ignore"
+                    ) as f:
+
+                        content = f.read()
+
+
+                    # Count functions
+
+                    result["functions"] += content.count("def ")
+                    result["functions"] += content.count("function ")
+
+                    # Count classes
+
+                    result["classes"] += content.count("class ")
+
+
+                    # Security check
+
+                    if "password=" in content.lower():
+
+                        result["issues"].append(
+                            {
+                                "file": file,
+                                "issue": "Possible hardcoded password",
+                                "severity": "High"
+                            }
+                        )
+
+
+                except Exception:
+                    pass
+
 
     return result
