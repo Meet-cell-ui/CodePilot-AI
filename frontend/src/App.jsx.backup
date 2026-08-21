@@ -1,0 +1,212 @@
+import { useState } from "react";
+import "./App.css";
+
+function App() {
+  const [apiKey, setApiKey] = useState("");
+  const [file, setFile] = useState(null);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const analyzeProject = async () => {
+    if (!apiKey) {
+      setError("Please enter your CodePilot API key.");
+      return;
+    }
+
+    if (!file) {
+      setError("Please select a ZIP project.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/upload", {
+        method: "POST",
+        headers: {
+          "X-API-Key": apiKey,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Analysis failed.");
+      }
+
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="app">
+      <header>
+        <h1>CodePilot AI</h1>
+        <p>AI-Powered Software Engineering Platform</p>
+      </header>
+
+      <main>
+        <section className="card">
+          <h2>Analyze Your Project</h2>
+
+          <label>CodePilot API Key</label>
+          <input
+            type="password"
+            placeholder="Enter your cpai_ API key"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+
+          <label>Upload ZIP Project</label>
+          <input
+            type="file"
+            accept=".zip"
+            onChange={(e) => setFile(e.target.files[0])}
+          />
+
+          <button onClick={analyzeProject} disabled={loading}>
+            {loading ? "Analyzing..." : "Analyze Project"}
+          </button>
+
+          {error && <p className="error">{error}</p>}
+        </section>
+
+        {result && (
+          <section className="results">
+            <h2>Analysis Results</h2>
+
+            <div className="summary">
+              <div>
+                <strong>Project</strong>
+                <span>{result.project_name}</span>
+              </div>
+
+              <div>
+                <strong>Quality Score</strong>
+                <span>
+                  {result.analysis.quality_score.overall_score}/100
+                </span>
+              </div>
+
+              <div>
+                <strong>Security Issues</strong>
+                <span>
+                  {result.analysis.security.total_issues}
+                </span>
+              </div>
+
+              <div>
+                <strong>Files</strong>
+                <span>
+                  {result.analysis.project_structure.total_files}
+                </span>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3>Project Structure</h3>
+              <p>
+                <strong>Type:</strong>{" "}
+                {result.analysis.project_structure.project_type}
+              </p>
+
+              <p>
+                <strong>Languages:</strong>{" "}
+                {result.analysis.project_structure.languages.join(", ")}
+              </p>
+
+              <p>
+                <strong>Frameworks:</strong>{" "}
+                {result.analysis.project_structure.frameworks.join(", ")}
+              </p>
+
+              <p>
+                <strong>Database:</strong>{" "}
+                {result.analysis.project_structure.database}
+              </p>
+
+              <p>
+                <strong>Health:</strong>{" "}
+                {result.analysis.project_structure.health_score}/100
+                {" "}
+                ({result.analysis.project_structure.grade})
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Code Analysis</h3>
+
+              <p>
+                <strong>Files analyzed:</strong>{" "}
+                {result.analysis.code_analysis.files_analyzed}
+              </p>
+
+              <p>
+                <strong>Functions:</strong>{" "}
+                {result.analysis.code_analysis.functions}
+              </p>
+
+              <p>
+                <strong>Classes:</strong>{" "}
+                {result.analysis.code_analysis.classes}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Security</h3>
+
+              {result.analysis.security.issues.length === 0 ? (
+                <p>No security issues detected.</p>
+              ) : (
+                result.analysis.security.issues.map((issue, index) => (
+                  <div className="securityIssue" key={index}>
+                    <strong>{issue.severity}</strong>
+                    <p>{issue.issue}</p>
+                    <small>
+                      {issue.file} — Line {issue.line}
+                    </small>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Recommendations</h3>
+
+              <ul>
+                {result.analysis.recommendations.map(
+                  (recommendation, index) => (
+                    <li key={index}>{recommendation}</li>
+                  )
+                )}
+              </ul>
+            </div>
+
+            <div className="card ai">
+              <h3>Gemini AI Technical Assessment</h3>
+              <pre>{result.analysis.ai_analysis}</pre>
+            </div>
+
+            <div className="card">
+              <h3>Generated Report</h3>
+              <pre>{result.report}</pre>
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
+
+export default App;
